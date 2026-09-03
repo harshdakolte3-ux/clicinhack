@@ -1,0 +1,78 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Organization {
+  id        String    @id @default(uuid())
+  name      String
+  category  String    // e.g. Healthcare, Banking, Government
+  createdAt DateTime  @default(now())
+
+  services  Service[]
+  counters  Counter[]
+}
+
+model Service {
+  id                 String       @id @default(uuid())
+  organizationId     String
+  name               String       // e.g. "General OPD", "Cash Deposit", "Passport Enquiry"
+  prefix             String       // e.g. "A", "B", "C"
+  avgServiceDuration Int          @default(10) // in minutes
+  createdAt          DateTime     @default(now())
+
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tickets            Ticket[]
+  counters           Counter[]
+}
+
+model Counter {
+  id             String      @id @default(uuid())
+  organizationId String
+  counterNumber  String      // e.g. "Counter 1", "Counter 2"
+  staffName      String?     // e.g. "Dr. Sharma", "Officer Rahul"
+  status         String      @default("OPEN") // OPEN, CLOSED, ON_BREAK
+  serviceId      String?
+  
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  service        Service?     @relation(fields: [serviceId], references: [id])
+  tickets        Ticket[]     @relation("ServedAtCounter")
+}
+
+model Ticket {
+  id             String    @id @default(uuid())
+  ticketNumber   String    // e.g. "A-101", "B-042"
+  customerName   String
+  customerPhone  String?
+  type           String    @default("WALK_IN") // APPOINTMENT, WALK_IN
+  priority       String    @default("REGULAR") // REGULAR, SENIOR_CITIZEN, EMERGENCY, VIP
+  status         String    @default("WAITING") // WAITING, CALLED, IN_SERVICE, COMPLETED, NO_SHOW, CANCELLED
+  
+  serviceId      String
+  counterId      String?
+  
+  estimatedWait  Int       @default(0) // in minutes
+  priorityScore  Int       @default(0) // Higher value = earlier in queue
+  
+  joinedAt       DateTime  @default(now())
+  calledAt       DateTime?
+  completedAt    DateTime?
+  
+  service        Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  counter        Counter?  @relation("ServedAtCounter", fields: [counterId], references: [id])
+  appointment    Appointment?
+}
+
+model Appointment {
+  id            String   @id @default(uuid())
+  ticketId      String   @unique
+  scheduledTime DateTime
+  status        String   @default("CONFIRMED") // CONFIRMED, COMPLETED, CANCELLED
+  createdAt     DateTime @default(now())
+
+  ticket        Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}

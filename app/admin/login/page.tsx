@@ -1,0 +1,166 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Shield, Lock, Mail, ArrowRight, Sparkles, ArrowLeft } from 'lucide-react';
+
+export default function StaffLoginPage() {
+  const router = useRouter();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError('Please enter your Staff Email and Password.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.user) {
+        localStorage.setItem('staffUser', JSON.stringify(data.user));
+        router.push('/admin/dashboard');
+      } else {
+        setError(data.error || 'Invalid staff credentials.');
+        setSubmitting(false);
+      }
+    } catch (err: any) {
+      setError('Failed to authenticate.');
+      setSubmitting(false);
+    }
+  };
+
+  // Quick 1-Click Demo Login for pitch presentations
+  const quickDemoLogin = (demoEmail: string) => {
+    setEmail(demoEmail);
+    setPassword('password123');
+    const demoUser = {
+      id: 'staff-demo',
+      name: demoEmail.includes('sharma') ? 'Dr. A. Sharma' : 'Pharmacist Sunita',
+      email: demoEmail,
+      role: 'Staff Operator',
+      counterNumber: 'Counter 1',
+    };
+    localStorage.setItem('staffUser', JSON.stringify(demoUser));
+    router.push('/admin/dashboard');
+  };
+
+  return (
+    <div className="mx-auto max-w-md px-4 py-8 sm:px-6">
+      {/* Back to Client Portal Button */}
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white mb-4 transition-all"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Customer Portal
+      </Link>
+
+      <div className="rounded-3xl border border-amber-500/30 bg-slate-900/90 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30">
+            <Shield className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-black text-white">Staff Operator Login</h1>
+            <p className="text-xs text-slate-400">Access counter dashboard & queue controls</p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-4 rounded-xl bg-rose-500/10 border border-rose-500/30 p-3 text-xs text-rose-400">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="mt-6 space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+              Staff Email / ID
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+              <input
+                type="email"
+                required
+                placeholder="dr.sharma@hospital.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-600 focus:border-amber-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-600 focus:border-amber-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-amber-600/30 hover:bg-amber-500 transition-all disabled:opacity-50"
+          >
+            {submitting ? 'Authenticating...' : 'Login to Staff Panel'}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </form>
+
+        {/* Quick Demo Login Presets */}
+        <div className="mt-6 border-t border-slate-800 pt-6">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+            1-Click Demo Logins for Hackathon:
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => quickDemoLogin('dr.sharma@hospital.com')}
+              className="rounded-xl border border-slate-800 bg-slate-950 p-2.5 text-left text-xs font-semibold text-slate-300 hover:border-amber-500/40 hover:text-white"
+            >
+              👨‍⚕️ Dr. A. Sharma <span className="block text-[10px] text-slate-500">OPD Counter 1</span>
+            </button>
+            <button
+              onClick={() => quickDemoLogin('sunita@hospital.com')}
+              className="rounded-xl border border-slate-800 bg-slate-950 p-2.5 text-left text-xs font-semibold text-slate-300 hover:border-amber-500/40 hover:text-white"
+            >
+              💊 Pharmacist Sunita <span className="block text-[10px] text-slate-500">Pharmacy Counter 4</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 text-center text-xs text-slate-400">
+          Need a new staff account?{' '}
+          <Link href="/admin/signup" className="font-bold text-amber-400 underline">
+            Register New Staff
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
