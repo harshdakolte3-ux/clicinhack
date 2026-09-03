@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, prefix, avgServiceDuration = 10, organizationId } = body;
+    const { name, prefix, avgServiceDuration = 10, organizationId, operatorPassword } = body;
 
     if (!name || !prefix) {
       return NextResponse.json(
@@ -34,10 +34,21 @@ export async function POST(req: NextRequest) {
         name,
         prefix: prefix.toUpperCase(),
         avgServiceDuration: parseInt(avgServiceDuration, 10) || 10,
+        operatorPassword: operatorPassword || 'password123',
       },
       include: {
         organization: true,
       },
+    });
+
+    // Automatically sync and create a Counter for this new department
+    await prisma.counter.create({
+      data: {
+        organizationId: targetOrgId,
+        counterNumber: `${newService.name} Counter`,
+        serviceId: newService.id,
+        status: 'OPEN'
+      }
     });
 
     return NextResponse.json(

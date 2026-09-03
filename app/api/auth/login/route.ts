@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,45 +13,61 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Demo Authentication Validation Logic
-    const demoUsers = [
-      {
-        id: 'staff-101',
-        name: 'Dr. A. Sharma',
-        email: 'dr.sharma@hospital.com',
-        role: 'Counter Operator',
-        counterNumber: 'Counter 1 (OPD)',
-      },
-      {
-        id: 'staff-102',
-        name: 'Dr. P. Verma',
-        email: 'dr.verma@hospital.com',
-        role: 'Counter Operator',
-        counterNumber: 'Counter 2 (OPD)',
-      },
-      {
-        id: 'staff-103',
-        name: 'Pharmacist Sunita',
-        email: 'sunita@hospital.com',
-        role: 'Pharmacy Officer',
-        counterNumber: 'Counter 4 (Pharmacy)',
-      },
-    ];
+    const lowerEmail = email.toLowerCase();
 
-    const foundUser = demoUsers.find((u) => u.email.toLowerCase() === email.toLowerCase()) || {
-      id: `staff-${Date.now()}`,
-      name: email.split('@')[0].toUpperCase(),
-      email,
-      role: 'Staff Operator',
-      counterNumber: 'Counter 1',
-    };
+    // 1. MASTER BILLING ADMIN LOGIN
+    if (lowerEmail === 'billing@smartqueue.com') {
+      if (password !== 'admin123' && password !== 'password123') {
+        return NextResponse.json({ error: 'Invalid master password.' }, { status: 401 });
+      }
+      return NextResponse.json({
+        success: true,
+        message: 'Master Authentication successful.',
+        user: {
+          id: 'staff-master-billing',
+          name: 'Master Billing Staff',
+          email: lowerEmail,
+          role: 'Admin Operator',
+          counterNumber: 'Global Control'
+        }
+      });
+    }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Authentication successful.',
-      user: foundUser,
-    });
+    // 2. DEPARTMENT OPERATOR LOGIN (Format: staff.<prefix>@smartqueue.com)
+    if (lowerEmail.startsWith('staff.') && lowerEmail.includes('@')) {
+      const prefix = lowerEmail.split('.')[1].split('@')[0].toUpperCase();
+      
+      const service = await prisma.service.findFirst({
+        where: { prefix }
+      });
+
+      if (!service) {
+        return NextResponse.json({ error: 'Department not found.' }, { status: 404 });
+      }
+
+      if (service.operatorPassword !== password) {
+        return NextResponse.json({ error: 'Incorrect department password.' }, { status: 401 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Authentication successful.',
+        user: {
+          id: `staff-${service.id}`,
+          name: `${service.name} Operator`,
+          email: lowerEmail,
+          role: 'Counter Operator',
+          counterNumber: `${service.name} Counter`,
+          serviceId: service.id,
+        }
+      });
+    }
+
+    // Fallback for old demo logins
+    return NextResponse.json({ error: 'Invalid staff email format.' }, { status: 400 });
+
   } catch (error: any) {
+    console.error('Login error:', error);
     return NextResponse.json({ error: error.message || 'Login failed.' }, { status: 500 });
   }
 }

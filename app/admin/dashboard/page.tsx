@@ -16,7 +16,10 @@ import {
   Printer,
   Layers,
   LogOut,
-  Home
+  Home,
+  Trash2,
+  Plus,
+  Edit2
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -58,6 +61,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Authentication check
   useEffect(() => {
@@ -77,6 +81,40 @@ export default function AdminDashboardPage() {
     localStorage.removeItem('staffUser');
     setStaffUser(null);
     router.push('/admin/login');
+  };
+
+  const handleAddCounter = async () => {
+    const counterNumber = prompt('Enter new counter name (e.g. Counter 5):');
+    if (!counterNumber) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/counters/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ counterNumber }),
+      });
+      if (res.ok) fetchDashboardData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteCounter = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete ${name}?`)) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/counters/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        if (selectedCounterId === id) setSelectedCounterId('');
+        fetchDashboardData();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const fetchDashboardData = async () => {
@@ -130,22 +168,50 @@ export default function AdminDashboardPage() {
     }
   }, [socket, selectedCounterId]);
 
-  const activeCounter = counters.find((c) => c.id === selectedCounterId) || counters[0];
+  // ISOLATION BY LOGIN: Filter to only show the department the staff member logged into!
+  // MASTER EXCEPTION: If the staff member is 'Billing', they get a master view of all counters.
+  const isMaster = staffUser?.name?.toLowerCase().includes('billing');
+
+  const visibleCounters = (staffUser?.serviceId && !isMaster)
+    ? counters.filter((c) => c.serviceId === staffUser.serviceId) 
+    : counters;
+
+  const visibleTickets = (staffUser?.serviceId && !isMaster)
+    ? waitingTickets.filter((t) => t.serviceId === staffUser.serviceId) 
+    : waitingTickets;
+
+  // Auto-select if restricted
+  useEffect(() => {
+    if (visibleCounters.length > 0 && !selectedCounterId) {
+      setSelectedCounterId(visibleCounters[0].id);
+    }
+  }, [visibleCounters, selectedCounterId]);
+
+  const activeCounter = visibleCounters.find((c) => c.id === selectedCounterId) || visibleCounters[0];
   const currentTicket = activeCounter?.currentTicket;
+
+  const counterDisplayName = activeCounter?.counterNumber || staffUser?.counterNumber || 'Assigned Counter';
+  const serviceDisplayName = activeCounter?.service?.name || staffUser?.name?.replace(' Operator', '') || 'Department';
 
   // Dispatch Next Ticket to Counter
   const handleCallNext = async () => {
-    if (!selectedCounterId) return;
+    if (!selectedCounterId && visibleCounters.length === 0) {
+      setMessage('No active counter configured for this department.');
+      return;
+    }
+    const targetCounterId = selectedCounterId || visibleCounters[0]?.id;
+    if (!targetCounterId) return;
+
     setActionLoading(true);
     setMessage(null);
 
     try {
-      const res = await fetch(`/api/counters/${selectedCounterId}/next`, {
+      const res = await fetch(`/api/counters/${targetCounterId}/next`, {
         method: 'POST',
       });
       const data = await res.json();
       if (data.success && data.ticket) {
-        setMessage(`📢 Dispatched Ticket ${data.ticket.ticketNumber} to ${activeCounter.counterNumber}`);
+        setMessage(`🎟️ Dispatched Ticket ${data.ticket.ticketNumber} to ${counterDisplayName}`);
         fetchDashboardData();
       } else {
         setMessage(data.message || data.error || 'No waiting tickets found for this counter service.');
@@ -159,6 +225,9 @@ export default function AdminDashboardPage() {
 
   // Update Ticket Status Action
   const handleUpdateStatus = async (ticketId: string, status: string) => {
+    const targetCounterId = selectedCounterId || visibleCounters[0]?.id;
+    if (!targetCounterId) return;
+    
     setActionLoading(true);
     setMessage(null);
 
@@ -166,7 +235,7 @@ export default function AdminDashboardPage() {
       const res = await fetch(`/api/tickets/${ticketId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, counterId: selectedCounterId }),
+        body: JSON.stringify({ status, counterId: targetCounterId }),
       });
       const data = await res.json();
       if (data.success) {
@@ -194,7 +263,67 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-6">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+      
+      {/* 1. STAFF NAVIGATION TOOLBAR (Top of Page) */}
+      <div className="bg-[#0B0F19] border border-slate-800/80 p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-xl">
+        <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded bg-blue-600 font-bold text-white text-xs">
+              Q
+            </div>
+            <span className="text-sm font-bold text-white">SmartQueue</span>
+          </Link>
+          <span className="rounded bg-amber-900/40 px-2 py-0.5 text-[10px] font-bold text-amber-500 border border-amber-700/50">
+            Staff Portal
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1 sm:gap-2">
+          <Link
+            href="/admin/dashboard"
+            className="flex items-center gap-1.5 rounded-lg bg-[#2D1B0F] px-3 py-1.5 text-xs font-bold text-amber-500 border border-amber-700/30"
+          >
+            <Shield className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Counter Panel</span>
+          </Link>
+
+          <Link
+            href="/admin/services"
+            className="flex items-center gap-1.5 rounded-lg px-2 sm:px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white"
+          >
+            <Layers className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Services & Presets</span>
+          </Link>
+
+          <Link
+            href="/admin/analytics"
+            className="flex items-center gap-1.5 rounded-lg px-2 sm:px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white"
+          >
+            <TrendingUp className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Analytics</span>
+          </Link>
+
+          <Link
+            href="/admin/qr"
+            className="flex items-center gap-1.5 rounded-lg px-2 sm:px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white"
+          >
+            <Printer className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Print QR</span>
+          </Link>
+
+          {staffUser && (
+            <div className="flex items-center gap-2 ml-1 sm:ml-2 border-l border-slate-800 pl-2 sm:pl-3">
+              <span className="text-[10px] sm:text-xs font-bold text-amber-500 uppercase tracking-wider max-w-[80px] sm:max-w-none truncate">
+                {staffUser.name}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1 rounded bg-rose-500/10 border border-rose-500/20 px-2 py-1 text-[10px] sm:text-xs font-bold text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
+              >
+                <LogOut className="h-3 w-3" /> <span className="hidden sm:inline">Logout</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Status Bar */}
       {message && (
         <div className="rounded-xl bg-blue-500/10 border border-blue-500/30 p-3 text-xs font-semibold text-blue-400">
@@ -202,15 +331,16 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* 1. GIANT TOP CONTAINER: Groups "Current Ticket" and "Counter/Queue" together */}
+      {/* 2. GIANT TOP CONTAINER: Groups "Current Ticket" and "Counter/Queue" together */}
       <div className="rounded-[2rem] border border-slate-800 bg-[#0A1128] p-6 sm:p-10 shadow-2xl overflow-hidden relative">
+
         
         {/* A. Current Ticket Section */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
             <div>
               <span className="text-xs font-extrabold uppercase tracking-widest text-amber-500 drop-shadow-md">
-                {activeCounter?.counterNumber} • {activeCounter?.service?.name}
+                {counterDisplayName} • {serviceDisplayName}
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-white mt-1">Current Ticket in Service</h2>
             </div>
@@ -304,7 +434,7 @@ export default function AdminDashboardPage() {
               className="w-full flex items-center justify-center gap-2 rounded-[1rem] bg-[#FF6B00] py-4 text-base font-black text-white shadow-xl shadow-orange-900/20 hover:bg-[#FF8533] transition-all disabled:opacity-50"
             >
               <Volume2 className="h-5 w-5 fill-current" />
-              <span>CALL NEXT TICKET FOR {activeCounter?.counterNumber?.toUpperCase()}</span>
+              <span>CALL NEXT TICKET FOR {counterDisplayName.toUpperCase()}</span>
             </button>
           </div>
         </div>
@@ -313,36 +443,72 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
           {/* Left: SELECT OPERATING COUNTER (7 Cols) */}
           <div className="lg:col-span-7">
-            <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">
-              SELECT OPERATING COUNTER
-            </label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                SELECT OPERATING COUNTER
+              </label>
+              <button
+                onClick={() => setIsEditMode(!isEditMode)}
+                className={`flex items-center gap-1 rounded px-2 py-1 text-[10px] font-bold border transition-all ${
+                  isEditMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                }`}
+              >
+                <Edit2 className="h-3 w-3" />
+                {isEditMode ? 'Done Editing' : 'Edit Counters'}
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {counters.map((c) => {
+              {visibleCounters.map((c) => {
                 const isSelected = c.id === selectedCounterId;
                 return (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedCounterId(c.id)}
-                    className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-all h-full ${
-                      isSelected
-                        ? 'border-amber-600/50 bg-[#2D1B0F] shadow-lg ring-1 ring-amber-500/30'
-                        : 'border-slate-800/50 bg-[#0F172A] hover:border-slate-700'
-                    }`}
-                  >
-                    <span className={`font-extrabold text-sm ${isSelected ? 'text-white' : 'text-white'}`}>
-                      {c.counterNumber}
-                    </span>
-                    <span className="text-[11px] text-slate-400 truncate w-full mt-0.5 leading-tight">
-                      {c.service?.name}
-                    </span>
-                    <div className="mt-auto pt-3 w-full">
-                      <span className={`inline-block rounded-md px-2 py-1 text-[10px] font-bold w-full truncate ${isSelected ? 'bg-[#1E293B] text-slate-200' : 'bg-[#1E293B] text-slate-300'}`}>
-                        {c.currentTicket ? `Active: ${c.currentTicket.ticketNumber}` : 'Idle'}
+                  <div key={c.id} className="relative h-full">
+                    <button
+                      onClick={() => !isEditMode && setSelectedCounterId(c.id)}
+                      className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-all h-full w-full ${
+                        isSelected && !isEditMode
+                          ? 'border-amber-600/50 bg-[#2D1B0F] shadow-lg ring-1 ring-amber-500/30'
+                          : 'border-slate-800/50 bg-[#0F172A] hover:border-slate-700'
+                      } ${isEditMode ? 'opacity-80 cursor-default' : ''}`}
+                    >
+                      <span className={`font-extrabold text-sm ${isSelected && !isEditMode ? 'text-white' : 'text-white'}`}>
+                        {c.counterNumber}
                       </span>
-                    </div>
-                  </button>
+                      <span className="text-[11px] text-slate-400 truncate w-full mt-0.5 leading-tight">
+                        {c.service?.name || 'No Service'}
+                      </span>
+                      <div className="mt-auto pt-3 w-full">
+                        <span className={`inline-block rounded-md px-2 py-1 text-[10px] font-bold w-full truncate ${isSelected && !isEditMode ? 'bg-[#1E293B] text-slate-200' : 'bg-[#1E293B] text-slate-300'}`}>
+                          {c.currentTicket ? `Active: ${c.currentTicket.ticketNumber}` : 'Idle'}
+                        </span>
+                      </div>
+                    </button>
+                    {isEditMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCounter(c.id, c.counterNumber);
+                        }}
+                        className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-white shadow-lg border border-slate-900 hover:bg-rose-500"
+                        title="Remove Counter"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
+              
+              {isEditMode && (
+                <button
+                  onClick={handleAddCounter}
+                  className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-[#0F172A]/50 p-4 text-center transition-all hover:bg-slate-800 hover:border-amber-500/50 h-full min-h-[110px]"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 mb-2">
+                    <Plus className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-400">Add Counter</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -356,7 +522,7 @@ export default function AdminDashboardPage() {
                     <h3 className="text-sm font-bold text-white leading-tight">
                       Live Waiting Queue
                     </h3>
-                    <p className="text-[11px] text-slate-400">{waitingTickets.length} customers in line</p>
+                    <p className="text-[11px] text-slate-400">{visibleTickets.length} customers in line</p>
                   </div>
                 </div>
                 <span className="rounded bg-amber-900/30 px-2 py-1 text-[10px] font-bold text-amber-500 border border-amber-700/30 flex items-center gap-1 text-center leading-tight max-w-[80px]">
@@ -364,13 +530,13 @@ export default function AdminDashboardPage() {
                 </span>
               </div>
 
-              {waitingTickets.length === 0 ? (
+              {visibleTickets.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-500 flex-1 flex items-center justify-center">
                   Queue is empty
                 </div>
               ) : (
-                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 flex-1">
-                  {waitingTickets.map((t, idx) => (
+                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 flex-1 custom-scrollbar">
+                  {visibleTickets.map((t, idx) => (
                     <div
                       key={t.id}
                       className="flex items-center justify-between rounded-xl bg-[#1E293B] p-2.5"
@@ -404,65 +570,6 @@ export default function AdminDashboardPage() {
               )}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* 2. STAFF NAVIGATION TOOLBAR (Full Width, breaking out of the container styling) */}
-      <div className="bg-[#0B0F19] border-y border-slate-800/80 p-3 flex flex-wrap items-center justify-between gap-3 shadow-xl -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded bg-blue-600 font-bold text-white text-xs">
-              Q
-            </div>
-            <span className="text-sm font-bold text-white">SmartQueue</span>
-          </Link>
-          <span className="rounded bg-amber-900/40 px-2 py-0.5 text-[10px] font-bold text-amber-500 border border-amber-700/50">
-            Staff Portal
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1 sm:gap-2">
-          <Link
-            href="/admin/dashboard"
-            className="flex items-center gap-1.5 rounded-lg bg-[#2D1B0F] px-3 py-1.5 text-xs font-bold text-amber-500 border border-amber-700/30"
-          >
-            <Shield className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Counter Panel</span>
-          </Link>
-
-          <Link
-            href="/admin/services"
-            className="flex items-center gap-1.5 rounded-lg px-2 sm:px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white"
-          >
-            <Layers className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Services & Presets</span>
-          </Link>
-
-          <Link
-            href="/admin/analytics"
-            className="flex items-center gap-1.5 rounded-lg px-2 sm:px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white"
-          >
-            <TrendingUp className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Analytics</span>
-          </Link>
-
-          <Link
-            href="/admin/qr"
-            className="flex items-center gap-1.5 rounded-lg px-2 sm:px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white"
-          >
-            <Printer className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Print QR</span>
-          </Link>
-
-          {staffUser && (
-            <div className="flex items-center gap-2 ml-1 sm:ml-2 border-l border-slate-800 pl-2 sm:pl-3">
-              <span className="text-[10px] sm:text-xs font-bold text-amber-500 uppercase tracking-wider max-w-[80px] sm:max-w-none truncate">
-                {staffUser.name}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-1 rounded bg-rose-500/10 border border-rose-500/20 px-2 py-1 text-[10px] sm:text-xs font-bold text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
-              >
-                <LogOut className="h-3 w-3" /> <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
 

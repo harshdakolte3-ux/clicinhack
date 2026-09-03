@@ -23,6 +23,7 @@ model Service {
   name               String       // e.g. "General OPD", "Cash Deposit", "Passport Enquiry"
   prefix             String       // e.g. "A", "B", "C"
   avgServiceDuration Int          @default(10) // in minutes
+  operatorPassword   String?      @default("password123") // For staff login isolation
   createdAt          DateTime     @default(now())
 
   organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
