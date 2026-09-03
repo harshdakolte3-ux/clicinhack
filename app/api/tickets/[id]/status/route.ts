@@ -37,6 +37,14 @@ export async function PATCH(
     emitSocketEvent('ticket:updated', updatedTicket, `ticket-${ticketId}`);
     emitSocketEvent('queue:updated', { serviceId: updatedTicket.serviceId });
 
+    if (status === 'CALLED' && updatedTicket.counter) {
+      emitSocketEvent('ticket:called', {
+        ticket: updatedTicket,
+        counter: updatedTicket.counter,
+        message: `Token ${updatedTicket.ticketNumber} called to ${updatedTicket.counter.counterNumber}`,
+      });
+    }
+
     if (updatedTicket.counterId) {
       emitSocketEvent('counter:state_changed', {
         counterId: updatedTicket.counterId,

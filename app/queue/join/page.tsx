@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Ticket, User, Phone, Layers, ArrowRight, ShieldAlert } from 'lucide-react';
 import { AadhaarVerification } from '@/components/AadhaarVerification';
 import { EmailOTPVerification } from '@/components/EmailOTPVerification';
+import { GeofenceVerification } from '@/components/GeofenceVerification';
 
 interface Service {
   id: string;
@@ -24,6 +25,7 @@ export default function JoinQueuePage() {
   const [priority, setPriority] = useState<string>('REGULAR');
   const [isAadhaarVerified, setIsAadhaarVerified] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isLocationVerified, setIsLocationVerified] = useState(false);
   const [verifiedEmail, setVerifiedEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +49,8 @@ export default function JoinQueuePage() {
       return;
     }
     
-    if (!isAadhaarVerified || !isEmailVerified) {
-      setError('Please complete identity verification.');
+    if (!isAadhaarVerified || !isEmailVerified || !isLocationVerified) {
+      setError('Please complete identity and location verification.');
       return;
     }
 
@@ -198,7 +200,8 @@ export default function JoinQueuePage() {
           </div>
 
           <div className="border-t border-slate-800 my-6 pt-6 space-y-5">
-            <h3 className="text-sm font-bold text-white mb-4">Identity Verification</h3>
+            <h3 className="text-sm font-bold text-white mb-4">Identity & Location Verification</h3>
+            <GeofenceVerification onVerified={() => setIsLocationVerified(true)} />
             <AadhaarVerification onVerified={() => setIsAadhaarVerified(true)} />
             <EmailOTPVerification onVerified={(email) => { setIsEmailVerified(true); setVerifiedEmail(email); }} />
           </div>
@@ -206,7 +209,7 @@ export default function JoinQueuePage() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={submitting || !isAadhaarVerified || !isEmailVerified}
+            disabled={submitting || !isAadhaarVerified || !isEmailVerified || !isLocationVerified}
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-sm font-bold text-white shadow-xl shadow-blue-600/30 hover:bg-blue-500 transition-all disabled:opacity-50"
           >
             {submitting ? (
