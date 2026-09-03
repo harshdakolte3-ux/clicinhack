@@ -25,6 +25,13 @@ export async function POST(
       );
     }
 
+    if (counter.status === 'ON_BREAK') {
+      return NextResponse.json(
+        { error: 'Cannot dispatch ticket while counter is ON BREAK.' },
+        { status: 400 }
+      );
+    }
+
     // Find highest priority WAITING ticket for this counter's service
     const nextTicket = await prisma.ticket.findFirst({
       where: {

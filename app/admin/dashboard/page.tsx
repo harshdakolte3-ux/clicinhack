@@ -20,7 +20,8 @@ import {
   Trash2,
   Plus,
   Edit2,
-  ArrowRight
+  ArrowRight,
+  Coffee
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -253,6 +254,28 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Toggle Break Status
+  const handleToggleBreak = async () => {
+    if (!activeCounter) return;
+    setActionLoading(true);
+    const newStatus = activeCounter.status === 'ON_BREAK' ? 'OPEN' : 'ON_BREAK';
+    try {
+      const res = await fetch(`/api/counters/${activeCounter.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        fetchDashboardData();
+        setMessage(`Counter is now ${newStatus === 'ON_BREAK' ? 'on break' : 'open'}.`);
+      }
+    } catch (err) {
+      setMessage('Failed to update break status.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Update Ticket Status Action
   const handleUpdateStatus = async (ticketId: string, status: string) => {
     if (!activeCounter) return;
@@ -465,14 +488,26 @@ export default function AdminDashboardPage() {
           )}
 
           {/* Primary Action Button: CALL NEXT TICKET FOR COUNTER X */}
-          <div className="mt-6">
+          <div className="mt-6 flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleCallNext}
-              disabled={actionLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-[1rem] bg-[#FF6B00] py-4 text-base font-black text-white shadow-xl shadow-orange-900/20 hover:bg-[#FF8533] transition-all disabled:opacity-50"
+              disabled={actionLoading || activeCounter?.status === 'ON_BREAK'}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-[1rem] py-4 text-base font-black text-white shadow-xl transition-all disabled:opacity-50 ${activeCounter?.status === 'ON_BREAK' ? 'bg-slate-700 opacity-50 cursor-not-allowed' : 'bg-[#FF6B00] shadow-orange-900/20 hover:bg-[#FF8533]'}`}
             >
               <Volume2 className="h-5 w-5 fill-current" />
               <span>CALL NEXT TICKET FOR {counterDisplayName.toUpperCase()}</span>
+            </button>
+
+            <button
+              onClick={handleToggleBreak}
+              disabled={actionLoading}
+              className={`sm:w-56 flex items-center justify-center gap-2 rounded-[1rem] py-4 text-sm font-bold text-white shadow-xl transition-all disabled:opacity-50 ${activeCounter?.status === 'ON_BREAK' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/20' : 'bg-amber-600 hover:bg-amber-500 shadow-amber-900/20'}`}
+            >
+              {activeCounter?.status === 'ON_BREAK' ? (
+                <> <Play className="h-4 w-4" /> Resume Work </>
+              ) : (
+                <> <Coffee className="h-4 w-4" /> Take a Break </>
+              )}
             </button>
           </div>
         </div>

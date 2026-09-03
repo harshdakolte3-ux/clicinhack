@@ -156,20 +156,25 @@ export function TVDisplayBoard() {
               <div className="my-2 text-center">
                 {currentTicket ? (
                   <div>
-                    <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                      NOW SERVING
+                    <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-0.5 animate-pulse">
+                      Now Serving
                     </div>
-                    <div className="text-3xl font-black font-mono tracking-tight text-white drop-shadow">
+                    <div className="text-4xl font-black text-white font-mono tracking-tight drop-shadow-md">
                       {currentTicket.ticketNumber}
                     </div>
-                    <div className="text-[11px] text-slate-400 truncate max-w-[120px] mx-auto mt-0.5">
+                    <div className="text-[11px] text-slate-300 font-medium truncate px-2 mt-1">
                       {currentTicket.customerName}
                     </div>
+                  </div>
+                ) : c.status === 'ON_BREAK' ? (
+                  <div>
+                    <div className="text-2xl font-bold text-amber-500/50 font-mono">---</div>
+                    <div className="text-[10px] text-amber-500 font-bold uppercase mt-1">PAUSED - ON BREAK</div>
                   </div>
                 ) : (
                   <div>
                     <div className="text-2xl font-bold text-slate-600 font-mono">---</div>
-                    <div className="text-[10px] text-slate-500 font-medium uppercase">AVAILABLE</div>
+                    <div className="text-[10px] text-slate-500 font-medium uppercase mt-1">AVAILABLE</div>
                   </div>
                 )}
               </div>

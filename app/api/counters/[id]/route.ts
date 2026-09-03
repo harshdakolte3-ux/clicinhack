@@ -31,6 +31,10 @@ export async function PATCH(
       include: { service: true }
     });
     
+    // Notify TV board and dashboards about the counter state change
+    const { emitSocketEvent } = await import('@/lib/socketServer');
+    emitSocketEvent('counter:state_changed', { counterId: updated.id });
+    
     return NextResponse.json({ success: true, counter: updated });
   } catch (error: any) {
     return NextResponse.json({ error: 'Failed to update counter.' }, { status: 500 });
