@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Ticket, User, Phone, Layers, ArrowRight, ShieldAlert } from 'lucide-react';
+import { Ticket, User, Phone, Layers, ArrowRight, ShieldAlert, Sparkles, CheckCircle2 } from 'lucide-react';
 import { AadhaarVerification } from '@/components/AadhaarVerification';
 import { EmailOTPVerification } from '@/components/EmailOTPVerification';
 import { GeofenceVerification } from '@/components/GeofenceVerification';
@@ -30,6 +30,10 @@ export default function JoinQueuePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [symptoms, setSymptoms] = useState('');
+  const [triageLoading, setTriageLoading] = useState(false);
+  const [triageResult, setTriageResult] = useState<{ reasoning: string; serviceName?: string; priority?: string } | null>(null);
+
   useEffect(() => {
     fetch('/api/services')
       .then((res) => res.json())
@@ -41,6 +45,37 @@ export default function JoinQueuePage() {
       })
       .catch((err) => setError('Failed to load services.'));
   }, []);
+
+  const handleRunTriage = async () => {
+    if (!symptoms.trim() || services.length === 0) return;
+    setTriageLoading(true);
+    setTriageResult(null);
+    try {
+      const res = await fetch('/api/triage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symptoms, services })
+      });
+      const data = await res.json();
+      let matchedServiceName = '';
+      if (data.serviceId) {
+        setSelectedServiceId(data.serviceId);
+        matchedServiceName = services.find(s => s.id === data.serviceId)?.name || '';
+      }
+      if (data.priority) setPriority(data.priority);
+      if (data.reasoning) {
+        setTriageResult({ 
+          reasoning: data.reasoning, 
+          serviceName: matchedServiceName, 
+          priority: data.priority 
+        });
+      }
+    } catch (err) {
+      console.error('Triage failed', err);
+    } finally {
+      setTriageLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,6 +175,62 @@ export default function JoinQueuePage() {
                 className="w-full rounded-xl border border-slate-800 bg-slate-950 py-3 pl-10 pr-4 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
               />
             </div>
+          </div>
+
+          {/* AI SYMPTOM TRIAGE */}
+          <div className="rounded-2xl border border-indigo-500/30 bg-indigo-950/20 p-4 shadow-inner relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-3 opacity-20 pointer-events-none">
+              <Sparkles className="h-16 w-16 text-indigo-400" />
+            </div>
+            <label className="flex items-center gap-2 text-sm font-black uppercase tracking-wider text-indigo-400 mb-3">
+              <Sparkles className="h-4 w-4" /> AI Smart Triage
+            </label>
+            <p className="text-xs text-indigo-200/70 mb-3 font-medium pr-10">
+              Not sure which department? Describe your symptoms and our AI will automatically assign you to the correct specialist and set your priority.
+            </p>
+            <div className="flex gap-2">
+              <textarea
+                rows={2}
+                value={symptoms}
+                onChange={(e) => setSymptoms(e.target.value)}
+                placeholder="E.g. My chest hurts and my left arm is numb..."
+                className="flex-1 rounded-xl border border-indigo-500/30 bg-slate-900/80 p-3 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none resize-none"
+              />
+              <button
+                type="button"
+                onClick={handleRunTriage}
+                disabled={triageLoading || !symptoms.trim()}
+                className="flex flex-col items-center justify-center rounded-xl bg-indigo-600 px-4 text-xs font-bold text-white shadow-lg shadow-indigo-900/20 hover:bg-indigo-500 transition-all disabled:opacity-50 min-w-[80px]"
+              >
+                {triageLoading ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mb-1" />
+                    <span>Analyze</span>
+                  </>
+                )}
+              </button>
+            </div>
+            
+            {triageResult && (
+              <div className="mt-3 rounded-lg bg-emerald-950/40 border border-emerald-500/30 p-3 flex items-start gap-2 animate-in fade-in slide-in-from-top-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <div className="text-xs font-bold text-emerald-400 mb-1">
+                    AI Triage Complete
+                  </div>
+                  <div className="bg-emerald-900/40 rounded p-2 mb-1 border border-emerald-500/20">
+                    <span className="text-[10px] uppercase text-emerald-300 font-bold block mb-0.5">Assigned To:</span>
+                    <span className="text-xs text-white font-bold block">{triageResult.serviceName || 'General Medicine'}</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded inline-block mt-1 ${triageResult.priority === 'EMERGENCY' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                      PRIORITY: {triageResult.priority}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-emerald-100/70">{triageResult.reasoning}</div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* DYNAMIC DROPDOWN SELECT: Services added by Admin */}
