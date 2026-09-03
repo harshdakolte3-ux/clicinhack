@@ -301,9 +301,6 @@ export default function JoinQueuePage() {
                 <option value="EMERGENCY" className="bg-slate-900 text-rose-400 font-bold">
                   Urgent / Emergency Priority (Immediate Triage Override)
                 </option>
-                <option value="VIP" className="bg-slate-900 text-purple-400 font-bold">
-                  VIP / Express Pass
-                </option>
               </select>
             </div>
           </div>
