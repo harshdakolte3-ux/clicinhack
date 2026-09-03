@@ -19,7 +19,8 @@ import {
   Home,
   Trash2,
   Plus,
-  Edit2
+  Edit2,
+  ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -62,6 +63,10 @@ export default function AdminDashboardPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // Cross-Department Transfer State
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [transferTargetId, setTransferTargetId] = useState<string>('');
 
   // Authentication check
   useEffect(() => {
@@ -217,6 +222,32 @@ export default function AdminDashboardPage() {
       }
     } catch (err: any) {
       setMessage('Failed to dispatch next ticket.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Transfer Ticket to another department
+  const handleTransferTicket = async (ticketId: string) => {
+    if (!transferTargetId) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}/transfer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetServiceId: transferTargetId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage('Patient transferred successfully!');
+        setTransferModalOpen(false);
+        setTransferTargetId('');
+        fetchDashboardData();
+      } else {
+        setMessage(data.error || 'Failed to transfer patient.');
+      }
+    } catch (err: any) {
+      setMessage('An error occurred during transfer.');
     } finally {
       setActionLoading(false);
     }
@@ -382,7 +413,7 @@ export default function AdminDashboardPage() {
               </div>
 
               {/* Tactile Actions Bar */}
-              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
                 <button
                   onClick={() => handleUpdateStatus(currentTicket.id, 'IN_SERVICE')}
                   disabled={actionLoading}
@@ -397,6 +428,14 @@ export default function AdminDashboardPage() {
                   className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-3 text-xs font-bold text-white shadow-md hover:bg-emerald-500 transition-all disabled:opacity-50"
                 >
                   <CheckCircle2 className="h-4 w-4" /> Complete
+                </button>
+
+                <button
+                  onClick={() => setTransferModalOpen(true)}
+                  disabled={actionLoading}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white shadow-md hover:bg-indigo-500 transition-all disabled:opacity-50"
+                >
+                  <ArrowRight className="h-4 w-4" /> Transfer
                 </button>
 
                 <button
@@ -571,6 +610,55 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Transfer Modal Overlay */}
+      {transferModalOpen && currentTicket && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl p-6">
+            <h2 className="text-lg font-bold text-white mb-2">Transfer Patient</h2>
+            <p className="text-xs text-slate-400 mb-6">
+              Select the department to transfer <span className="font-bold text-white">{currentTicket.customerName}</span> (Token {currentTicket.ticketNumber}).
+            </p>
+
+            <div className="space-y-3 mb-6">
+              {Array.from(new Set(counters.map(c => c.serviceId))).map(serviceId => {
+                const service = counters.find(c => c.serviceId === serviceId)?.service;
+                if (!service || service.id === activeCounter?.serviceId) return null;
+                return (
+                  <button
+                    key={service.id}
+                    onClick={() => setTransferTargetId(service.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
+                      transferTargetId === service.id 
+                        ? 'border-indigo-500 bg-indigo-500/10' 
+                        : 'border-slate-700 bg-slate-800 hover:border-slate-600'
+                    }`}
+                  >
+                    <span className="text-sm font-bold text-white">{service.name}</span>
+                    {transferTargetId === service.id && <CheckCircle2 className="h-5 w-5 text-indigo-400" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { setTransferModalOpen(false); setTransferTargetId(''); }}
+                className="flex-1 py-3 text-xs font-bold text-slate-300 bg-slate-800 rounded-xl hover:bg-slate-700 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleTransferTicket(currentTicket.id)}
+                disabled={actionLoading || !transferTargetId}
+                className="flex-1 py-3 text-xs font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-500 transition-all disabled:opacity-50"
+              >
+                {actionLoading ? 'Transferring...' : 'Confirm Transfer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3. BOTTOM SECTION: Embedded Live TV Display Board */}
       <div className="pt-4">

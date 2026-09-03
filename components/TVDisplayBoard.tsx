@@ -84,11 +84,13 @@ export function TVDisplayBoard() {
 
       socket.on('counter:state_changed', () => fetchKioskData());
       socket.on('ticket:updated', () => fetchKioskData());
+      socket.on('queue:updated', () => fetchKioskData());
 
       return () => {
         socket.off('ticket:called');
         socket.off('counter:state_changed');
         socket.off('ticket:updated');
+        socket.off('queue:updated');
       };
     }
   }, [socket]);
