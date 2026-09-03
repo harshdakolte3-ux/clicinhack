@@ -125,14 +125,32 @@ export default function JoinQueuePage() {
   return (
     <div className="mx-auto max-w-lg px-4 py-8 sm:px-6">
       <div className="rounded-3xl border border-slate-800 bg-slate-900/90 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
-            <Ticket className="h-6 w-6" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600/20 text-blue-400 border border-blue-500/30">
+              <Ticket className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-black text-white">Join Digital Queue</h1>
+              <p className="text-xs text-slate-400">Get your instant digital token on your phone</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-black text-white">Join Digital Queue</h1>
-            <p className="text-xs text-slate-400">Get your instant digital token on your phone</p>
-          </div>
+          {/* HACKATHON DEMO SHORTCUT */}
+          <button
+            type="button"
+            onClick={() => {
+              setCustomerName('Rahul Sharma');
+              setCustomerPhone('9876543210');
+              setSymptoms('I have a severe toothache and my gums are bleeding.');
+              setVerifiedEmail('judge@hackathon.com');
+              setIsAadhaarVerified(true);
+              setIsEmailVerified(true);
+              setIsLocationVerified(true);
+            }}
+            className="rounded-lg bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 text-[10px] font-bold uppercase text-emerald-400 hover:bg-emerald-500/20 transition-all flex items-center gap-1.5"
+          >
+            <Sparkles className="h-3 w-3" /> Auto-Fill Demo
+          </button>
         </div>
 
         {error && (
