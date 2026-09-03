@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Shield, Lock, Mail, ArrowRight, Sparkles, ArrowLeft, UserCheck } from 'lucide-react';
 
 export default function StaffLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,6 +16,10 @@ export default function StaffLoginPage() {
   const [services, setServices] = useState<any[]>([]);
 
   useEffect(() => {
+    // Read pre-filled email from URL if present (from QR Code)
+    const emailParam = searchParams.get('email');
+    if (emailParam) setEmail(emailParam);
+
     fetch('/api/services')
       .then((r) => r.json())
       .then((data) => {
@@ -23,7 +28,7 @@ export default function StaffLoginPage() {
         }
       })
       .catch(() => {});
-  }, []);
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

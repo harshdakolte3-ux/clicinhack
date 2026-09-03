@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Ticket, User, Phone, Layers, ArrowRight, ShieldAlert } from 'lucide-react';
+import { AadhaarVerification } from '@/components/AadhaarVerification';
+import { EmailOTPVerification } from '@/components/EmailOTPVerification';
 
 interface Service {
   id: string;
@@ -20,6 +22,9 @@ export default function JoinQueuePage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [priority, setPriority] = useState<string>('REGULAR');
+  const [isAadhaarVerified, setIsAadhaarVerified] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [verifiedEmail, setVerifiedEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +46,11 @@ export default function JoinQueuePage() {
       setError('Please provide your name and select a department.');
       return;
     }
+    
+    if (!isAadhaarVerified || !isEmailVerified) {
+      setError('Please complete identity verification.');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -52,6 +62,7 @@ export default function JoinQueuePage() {
         body: JSON.stringify({
           customerName,
           customerPhone,
+          customerEmail: verifiedEmail,
           serviceId: selectedServiceId,
           type: 'WALK_IN',
           priority,
@@ -60,6 +71,9 @@ export default function JoinQueuePage() {
 
       const data = await res.json();
       if (data.success && data.ticket) {
+        if (data.emailSent) {
+          alert('Queue Pass Generated! A confirmation email has been sent to ' + verifiedEmail);
+        }
         router.push(`/ticket/${data.ticket.id}`);
       } else {
         setError(data.error || 'Failed to create queue token.');
@@ -183,10 +197,16 @@ export default function JoinQueuePage() {
             </div>
           </div>
 
+          <div className="border-t border-slate-800 my-6 pt-6 space-y-5">
+            <h3 className="text-sm font-bold text-white mb-4">Identity Verification</h3>
+            <AadhaarVerification onVerified={() => setIsAadhaarVerified(true)} />
+            <EmailOTPVerification onVerified={(email) => { setIsEmailVerified(true); setVerifiedEmail(email); }} />
+          </div>
+
           {/* Submit */}
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !isAadhaarVerified || !isEmailVerified}
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-sm font-bold text-white shadow-xl shadow-blue-600/30 hover:bg-blue-500 transition-all disabled:opacity-50"
           >
             {submitting ? (

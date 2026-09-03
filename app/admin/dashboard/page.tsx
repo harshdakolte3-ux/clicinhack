@@ -129,9 +129,6 @@ export default function AdminDashboardPage() {
 
       if (counterData.counters) {
         setCounters(counterData.counters);
-        if (!selectedCounterId && counterData.counters.length > 0) {
-          setSelectedCounterId(counterData.counters[0].id);
-        }
       }
 
       if (ticketData.tickets) {
@@ -180,10 +177,13 @@ export default function AdminDashboardPage() {
     ? waitingTickets.filter((t) => t.serviceId === staffUser.serviceId) 
     : waitingTickets;
 
-  // Auto-select if restricted
+  // Auto-select valid counter
   useEffect(() => {
-    if (visibleCounters.length > 0 && !selectedCounterId) {
-      setSelectedCounterId(visibleCounters[0].id);
+    if (visibleCounters.length > 0) {
+      const isSelectedValid = visibleCounters.some((c) => c.id === selectedCounterId);
+      if (!isSelectedValid) {
+        setSelectedCounterId(visibleCounters[0].id);
+      }
     }
   }, [visibleCounters, selectedCounterId]);
 
@@ -195,12 +195,11 @@ export default function AdminDashboardPage() {
 
   // Dispatch Next Ticket to Counter
   const handleCallNext = async () => {
-    if (!selectedCounterId && visibleCounters.length === 0) {
+    if (!activeCounter) {
       setMessage('No active counter configured for this department.');
       return;
     }
-    const targetCounterId = selectedCounterId || visibleCounters[0]?.id;
-    if (!targetCounterId) return;
+    const targetCounterId = activeCounter.id;
 
     setActionLoading(true);
     setMessage(null);
@@ -225,8 +224,8 @@ export default function AdminDashboardPage() {
 
   // Update Ticket Status Action
   const handleUpdateStatus = async (ticketId: string, status: string) => {
-    const targetCounterId = selectedCounterId || visibleCounters[0]?.id;
-    if (!targetCounterId) return;
+    if (!activeCounter) return;
+    const targetCounterId = activeCounter.id;
     
     setActionLoading(true);
     setMessage(null);

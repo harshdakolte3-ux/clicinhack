@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar, User, Phone, Clock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { AadhaarVerification } from '@/components/AadhaarVerification';
+import { EmailOTPVerification } from '@/components/EmailOTPVerification';
 
 interface Service {
   id: string;
@@ -19,6 +21,9 @@ export default function BookAppointmentPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('10:30 AM');
+  const [isAadhaarVerified, setIsAadhaarVerified] = useState(false);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [verifiedEmail, setVerifiedEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +47,11 @@ export default function BookAppointmentPage() {
       setError('Please fill in required fields.');
       return;
     }
+    
+    if (!isAadhaarVerified || !isEmailVerified) {
+      setError('Please complete identity verification.');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -57,6 +67,7 @@ export default function BookAppointmentPage() {
         body: JSON.stringify({
           customerName,
           customerPhone,
+          customerEmail: verifiedEmail,
           serviceId: selectedServiceId,
           type: 'APPOINTMENT',
           priority: 'REGULAR',
@@ -66,6 +77,9 @@ export default function BookAppointmentPage() {
 
       const data = await res.json();
       if (data.success && data.ticket) {
+        if (data.emailSent) {
+          alert('Booking Confirmed! A confirmation email has been sent to ' + verifiedEmail);
+        }
         router.push(`/ticket/${data.ticket.id}`);
       } else {
         setError(data.error || 'Failed to book appointment.');
@@ -174,10 +188,16 @@ export default function BookAppointmentPage() {
             </div>
           </div>
 
+          <div className="border-t border-slate-800 my-6 pt-6 space-y-5">
+            <h3 className="text-sm font-bold text-white mb-4">Identity Verification</h3>
+            <AadhaarVerification onVerified={() => setIsAadhaarVerified(true)} />
+            <EmailOTPVerification onVerified={(email) => { setIsEmailVerified(true); setVerifiedEmail(email); }} />
+          </div>
+
           {/* Submit */}
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !isAadhaarVerified || !isEmailVerified}
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-indigo-600 py-4 text-sm font-bold text-white shadow-xl shadow-indigo-600/30 hover:bg-indigo-500 transition-all disabled:opacity-50"
           >
             {submitting ? (
