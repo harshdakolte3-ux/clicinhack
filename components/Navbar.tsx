@@ -30,15 +30,15 @@ export function Navbar() {
     router.push('/admin/login');
   };
 
-  // Hide the global Navbar on Kiosk and Staff Dashboard pages, as they have their own integrated layouts
-  if (pathname === '/kiosk' || pathname === '/admin/dashboard') {
+  // Hide the global Navbar on Kiosk, Staff Dashboard, and QR pages, as they have their own integrated layouts
+  if (pathname === '/kiosk' || pathname === '/admin/dashboard' || pathname === '/admin/qr') {
     return null;
   }
 
   const isStaffArea = pathname.startsWith('/admin');
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/90 backdrop-blur-md print:hidden">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         {/* Brand Logo - ALWAYS links back to Client Webpage (/) */}
         <Link href="/" className="flex items-center gap-2 group cursor-pointer">
