@@ -544,13 +544,10 @@ export default function AdminDashboardPage() {
                           : 'border-slate-800/50 bg-[#0F172A] hover:border-slate-700'
                       } ${isEditMode ? 'opacity-80 cursor-default' : ''}`}
                     >
-                      <span className={`font-extrabold text-sm ${isSelected && !isEditMode ? 'text-white' : 'text-white'}`}>
-                        {c.counterNumber}
-                      </span>
-                      <span className="text-[11px] text-slate-400 truncate w-full mt-0.5 leading-tight">
-                        {c.service?.name || 'No Service'}
-                      </span>
-                      <div className="mt-auto pt-3 w-full">
+                        <span className="text-xs font-black text-white w-full truncate leading-tight mt-1">
+                          {c.counterNumber}
+                        </span>
+                        <div className="mt-auto pt-3 w-full">
                         <span className={`inline-block rounded-md px-2 py-1 text-[10px] font-bold w-full truncate ${isSelected && !isEditMode ? 'bg-[#1E293B] text-slate-200' : 'bg-[#1E293B] text-slate-300'}`}>
                           {c.currentTicket ? `Active: ${c.currentTicket.ticketNumber}` : 'Idle'}
                         </span>

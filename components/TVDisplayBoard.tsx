@@ -179,9 +179,6 @@ export function TVDisplayBoard() {
                 )}
               </div>
 
-              <div className="text-[10px] text-slate-400 truncate text-center border-t border-slate-800/80 pt-1.5">
-                {c.service?.name || 'General Service'}
-              </div>
             </div>
           );
         })}
