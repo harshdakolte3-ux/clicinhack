@@ -3,7 +3,7 @@ import './globals.css';
 import { Navbar } from '@/components/Navbar';
 
 export const metadata: Metadata = {
-  title: 'Smart Appointment & Virtual Queue Management System',
+  title: 'SmartQueue',
   description: 'Eliminate waiting lines with real-time digital passes, dynamic wait time estimation, and smart counter operations.',
 };
 
