@@ -112,8 +112,10 @@ export async function POST(req: NextRequest) {
                 <p style="margin: 5px 0;"><strong>Department / Doctor:</strong> ${service.name}</p>
                 <p style="margin: 5px 0;"><strong>Type:</strong> ${type === 'APPOINTMENT' ? 'Advance Appointment' : 'Walk-in Queue'}</p>
                 <p style="margin: 5px 0;"><strong>Time/Date:</strong> ${dateStr}</p>
+                <p style="margin: 5px 0;"><strong>Estimated Wait Time:</strong> ~${ewt.estimatedWaitMinutes} minutes (Position: ${ewt.positionInQueue})</p>
               </div>
 
+              <p>You can track your live queue position using the digital pass on your phone.</p>
               <p>Please keep an eye on the Live TV Board or listen for the voice announcement for your token number.</p>
               <p>Thank you,<br/><strong>Smart Queue Management</strong></p>
             </div>

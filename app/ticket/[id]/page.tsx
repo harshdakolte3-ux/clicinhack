@@ -114,12 +114,19 @@ export default function TicketPassPage() {
         if (payload.ticket && payload.ticket.id === ticketId) {
           setTicket(payload.ticket);
           playCallChime();
+          setAudioAlertPlayed(true);
         }
+      });
+
+      socket.on('queue:updated', () => {
+        // If the queue updates (someone else is called), fetch new estimated wait time and position
+        fetchTicketDetails();
       });
 
       return () => {
         socket.off('ticket:updated');
         socket.off('ticket:called');
+        socket.off('queue:updated');
       };
     }
   }, [socket, ticketId]);

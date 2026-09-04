@@ -75,6 +75,7 @@ export async function POST(
 
     emitSocketEvent('ticket:updated', updatedTicket, `ticket-${updatedTicket.id}`);
     emitSocketEvent('counter:state_changed', { counterId, currentTicket: updatedTicket });
+    emitSocketEvent('queue:updated', { serviceId: counter.serviceId });
 
     return NextResponse.json({
       success: true,
