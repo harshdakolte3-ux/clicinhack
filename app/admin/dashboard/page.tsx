@@ -179,8 +179,10 @@ export default function AdminDashboardPage() {
     ? counters.filter((c) => c.serviceId === staffUser.serviceId) 
     : counters;
 
-  const visibleTickets = (staffUser?.serviceId && !isMaster)
-    ? waitingTickets.filter((t) => t.serviceId === staffUser.serviceId) 
+  const activeCounter = visibleCounters.find((c) => c.id === selectedCounterId) || visibleCounters[0];
+
+  const visibleTickets = activeCounter?.serviceId
+    ? waitingTickets.filter((t) => t.serviceId === activeCounter.serviceId) 
     : waitingTickets;
 
   // Auto-select valid counter
@@ -193,7 +195,6 @@ export default function AdminDashboardPage() {
     }
   }, [visibleCounters, selectedCounterId]);
 
-  const activeCounter = visibleCounters.find((c) => c.id === selectedCounterId) || visibleCounters[0];
   const currentTicket = activeCounter?.currentTicket;
 
   const counterDisplayName = activeCounter?.counterNumber || staffUser?.counterNumber || 'Assigned Counter';
