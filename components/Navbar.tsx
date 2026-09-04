@@ -31,7 +31,7 @@ export function Navbar() {
   };
 
   // Hide the global Navbar on Kiosk, Staff Dashboard, and QR pages, as they have their own integrated layouts
-  if (pathname === '/kiosk' || pathname === '/admin/dashboard' || pathname === '/admin/qr') {
+  if (pathname === '/kiosk' || pathname.startsWith('/admin/dashboard') || pathname.startsWith('/admin/qr')) {
     return null;
   }
 
